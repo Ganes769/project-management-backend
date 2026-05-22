@@ -1,3 +1,31 @@
+from dataclasses import dataclass
+from datetime import date
+
+
+@dataclass
+class Project:
+    name: str
+    slug: str
+    archived: bool = False
+
+
+def is_overdue(due_date, status) -> bool:
+    if due_date is None:
+        return False
+    if status == "done":
+        return False
+    return due_date < date.today()
+
+
+status = "planned"
+if status == "done":
+    print("Task is completed")
+elif status == "blocked":
+    print("Task need attention")
+else:
+    print("Task is completed")
+
+
 def slugify(text: str, sep="`*"):
     clean = text.strip().lower()
     return clean.replace("-", sep)
@@ -25,3 +53,13 @@ def build_project(name, **kwargs):
 
 
 print(build_project("Nasa", description="description"))
+
+
+def validate_project_name(name: str) -> str:
+    cleaned = name.strip()
+    if not cleaned:
+        raise ValueError("Project name cannot be blank")
+    return cleaned
+
+
+print(validate_project_name("my project"))
