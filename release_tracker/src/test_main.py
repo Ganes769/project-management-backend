@@ -1,5 +1,4 @@
 from fastapi.testclient import TestClient
-
 from release_tracker.main import app
 
 client = TestClient(app)

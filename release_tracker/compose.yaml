@@ -2,7 +2,7 @@ services:
   db:
     image: postgres:17-alpine
     ports:
-      - "5432:5432"
+      - "5433:5432"
     environment:
       POSTGRES_DB: release_tracker
       POSTGRES_USER: release_tracker

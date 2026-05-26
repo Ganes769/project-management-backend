@@ -9,22 +9,22 @@ from sqlmodel import Field, SQLModel
 def utc_now()-> datetime:
     return datetime.now(UTC)
 
-ProjectName=Annotated[
+ProjectName = Annotated[
     str,
-    StringConstraints(strip_whitespace="true",min_length=2)
-    ]
+    StringConstraints(strip_whitespace=True, min_length=2),
+]
 class ProjectBase(SQLModel):
-    ProjectName:ProjectName=Field(unique=True)
-    description:str|None=None
+    name: ProjectName = Field(unique=True)
+    description: str | None = None
 
-class Projects(ProjectBase,table=True):
-    __tablename__="projects"
-    id:int=Field(default=None,primary_key=True)
-    slug:str=Field(unique=True)
-    created_at:datetime=Field(
+class Project(ProjectBase, table=True):
+    __tablename__ = "projects"
+    id: int | None = Field(default=None, primary_key=True)
+    slug: str = Field(unique=True)
+    created_at: datetime = Field(
         default_factory=utc_now,
-  sa_column=Column(DateTime(timezone=True), nullable=False),
-        )
+        sa_column=Column(DateTime(timezone=True), nullable=False),
+    )
 class ProjectCreate(ProjectBase):
     pass
 class ProjectUpdate(SQLModel):

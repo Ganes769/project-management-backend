@@ -1,9 +1,8 @@
-
 from functools import lru_cache
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-DEFAULT_DATABASE_URL = "postgresql+psycopg://release_tracker:release_tracker@localhost:5432/release_tracker"
+DEFAULT_DATABASE_URL = "postgresql+psycopg://release_tracker:release_tracker@localhost:5433/release_tracker"
 
 
 class Settings(BaseSettings):
