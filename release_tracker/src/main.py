@@ -1,37 +1,51 @@
-from fastapi import FastAPI, HTTPException, status
-from pydantic import BaseModel
+import re
+from typing import Annotated
 
+from fastapi import Depends, FastAPI, HTTPException, Response, status
+from sqlmodel import Session, select
 
-class ProjectRead(BaseModel):
-    id: int
-    name: str
-    slug: str
-
+from .database import get_session
+from .models import Project, ProjectCreate, ProjectRead, ProjectUpdate
 
 app = FastAPI(title="Release tracker")
+def slugify(value:str)-> str:
+   cleaned= "".join(c for  c in value.lower() if c.isalnum() or c=="")
+   return "-".join(cleaned.split()) or "Project"
+sessionDep=Annotated[Session,Depends(get_session)]
+@app.get ("/projects",response_model=list[ProjectRead])
+def list_projects(session:sessionDep):
+    statement=select(Project).order_by(Project.name)
+    project=session.exec(statement).all()
+    return list(project)
 
 
-@app.get("/projects/{id}", response_model=list[ProjectRead])
-def get_projects(id: int):
-    projects = mock_database.get(id)
+
+@app.get("/projects/{id}", response_model=ProjectRead)
+def get_projects(id: int, session: sessionDep):
+    projects = session.get(Project, id)
+
     if not projects:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,detail="Project not found")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Project not found"
+        )
+
     return projects
 
 
-# @app.get("/projects")
-# def list_projects() -> list[ProjectRead]:
-#     return list(mock_database.values())
-@app.get ("/projects",response_model=list[ProjectRead])
-def list_slug(slug:str|None):
-    projects=list(mock_database.values())
-    if slug is None:
-        return projects
-    return [project for project in projects if project.slug==slug]    
+@app.post("/projects", response_model=ProjectRead, status_code=status.HTTP_201_CREATED)
+def create_project(payload: ProjectCreate, session: sessionDep) -> Project:
+    project = Project.model_validate(payload, update={"slug": slugify(payload.name)})
+    session.add(project)
+    session.commit()
+    session.refresh(project)
+    return project
 
-
-mock_database: dict[int, ProjectRead] = {
-    1: ProjectRead(id=1, name="Frontend Redesign", slug="frontend-redesign"),
-    2: ProjectRead(id=2, name="Payment API", slug="payment-api"),
-    3: ProjectRead(id=3, name="Analytics Service", slug="analytics-service"),
-}
+@app.delete("project/{project_id}",status_code=status.HTTP_204_NO_CONTENT)
+def delete_project(project_id:int,session:sessionDep):
+    project=Project.get(Project,project_id)
+    if not project:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,detail="Project not found")
+    session.delete(project)
+    session.commit()
+    return  Response(status_code=status.HTTP_204_NO_CONTENT)

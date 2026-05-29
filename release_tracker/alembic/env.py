@@ -4,8 +4,10 @@ from sqlalchemy import engine_from_config, pool
 from sqlmodel import SQLModel
 
 from alembic import context
+from src import (
+    models,  # noqa: F401  -- imported so models register on SQLModel.metadata
+)
 from src.config import get_settings
-from src import models  # noqa: F401  -- imported so models register on SQLModel.metadata
 
 config = context.config
 
