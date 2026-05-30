@@ -1,41 +1,137 @@
+from datetime import date
 
-from typing import Annotated
-
-from fastapi import Depends, HTTPException, Response, status
+from fastapi import HTTPException, status
 from sqlmodel import Session, select
 
-from .database import get_session
-from .dependency import projectDep
-from .models import Project, ProjectCreate, ProjectRead, ProjectUpdate
+from .models import (
+    Project,
+    ProjectCreate,
+    ProjectUpdate,
+    Task,
+    TaskCreate,
+    TaskPriority,
+    TaskStatus,
+    TaskUpdate,
+)
 
-sessionDep=Annotated[Session,Depends(get_session)]
-def slugify(value:str)-> str:
-   cleaned= "".join(c for  c in value.lower() if c.isalnum() or c=="")
-   return "-".join(cleaned.split()) or "Project"
-def list_projects(session:sessionDep):
-    statement=select(Project).order_by(Project.name)
-    project=session.exec(statement).all()
-    return list(project)
-def get_project(project:projectDep):
-    # projects = session.get(Project, id)
 
-    # if not projects:
-    #     raise HTTPException(
-    #         status_code=status.HTTP_404_NOT_FOUND,
-    #         detail="Project not found"
-    #     )
+def slugify(value: str) -> str:
+    cleaned = "".join(c if c.isalnum() else " " for c in value.lower())
+    return "-".join(cleaned.split()) or "project"
 
-    return project
-def create_project(payload: ProjectCreate, session: sessionDep) -> Project:
-    project = Project.model_validate(payload, update={"slug": slugify(payload.name)})
+
+def list_projects(session: Session) -> list[Project]:
+    statement = select(Project).order_by(Project.name)
+    return list(session.exec(statement).all())
+
+
+def get_project(project_id: int, session: Session) -> Project | None:
+    return session.get(Project, project_id)
+
+
+def create_project(payload: ProjectCreate, session: Session) -> Project:
+    project = Project.model_validate(
+        payload, update={"slug": slugify(payload.name)}
+    )
     session.add(project)
     session.commit()
     session.refresh(project)
     return project
-def delete_project(project_id:int,session:sessionDep):
-    project=session.get(Project,project_id)
+
+
+def update_project(
+    session: Session, project_id: int, payload: ProjectUpdate
+) -> Project:
+    project = session.get(Project, project_id)
     if not project:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,detail="Project not found")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Project not found"
+        )
+    data = payload.model_dump(exclude_unset=True)
+    if "name" in data:
+        data["slug"] = slugify(data["name"])
+    for key, value in data.items():
+        setattr(project, key, value)
+    session.add(project)
+    session.commit()
+    session.refresh(project)
+    return project
+
+
+def delete_project(project_id: int, session: Session) -> None:
+    project = session.get(Project, project_id)
+    if not project:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Project not found"
+        )
     session.delete(project)
     session.commit()
-    return  Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+def get_task(task_id: int, session: Session) -> Task | None:
+    return session.get(Task, task_id)
+
+
+def list_tasks(
+    session: Session,
+    project_id: int | None = None,
+    project_slug: str | None = None,
+    task_status: TaskStatus | None = None,
+    over_due: bool = False,
+    task_priority: TaskPriority | None = None,
+) -> list[Task]:
+    statement = select(Task)
+    if project_id is not None:
+        statement = statement.where(Task.project_id == project_id)
+    if project_slug is not None:
+        statement = statement.join(Project).where(Project.slug == project_slug)
+    if task_status is not None:
+        statement = statement.where(Task.status == task_status)
+    if task_priority is not None:
+        statement = statement.where(Task.priority == task_priority)
+    if over_due:
+        statement = (
+            statement.where(Task.due_date.is_not(None))  # type: ignore[union-attr]
+            .where(Task.due_date < date.today())
+            .where(Task.status != TaskStatus.done)
+        )
+    return list(session.exec(statement).all())
+
+
+def create_task(
+    project: Project, payload: TaskCreate, session: Session
+) -> Task:
+    task = Task.model_validate(
+        payload, update={"project_id": project.project_id}
+    )
+    session.add(task)
+    session.commit()
+    session.refresh(task)
+    return task
+
+
+def update_task(
+    task_id: int, payload: TaskUpdate, session: Session
+) -> Task:
+    task = session.get(Task, task_id)
+    if not task:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Task not found"
+        )
+    data = payload.model_dump(exclude_unset=True)
+    for key, value in data.items():
+        setattr(task, key, value)
+    session.add(task)
+    session.commit()
+    session.refresh(task)
+    return task
+
+
+def delete_task(task_id: int, session: Session) -> None:
+    task = session.get(Task, task_id)
+    if not task:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Task not found"
+        )
+    session.delete(task)
+    session.commit()

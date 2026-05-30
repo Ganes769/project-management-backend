@@ -80,3 +80,28 @@ class Task(TaskBase, table=True):
         index=True,
     )
     project: Project | None = Relationship(back_populates="tasks")
+
+
+class TaskCreate(TaskBase):
+    pass
+
+
+class TaskUpdate(SQLModel):
+    title: TaskTitle | None = None
+    detail: str | None = None
+    status: TaskStatus | None = None
+    priority: TaskPriority | None = None
+    due_date: date | None = None
+
+
+class TaskRead(TaskBase):
+    id: int
+    project_id: int
+
+
+class ProjectReadWithTasks(ProjectRead):
+    tasks: list[TaskRead] = []
+
+
+class TaskReadWithProject(TaskRead):
+    project: ProjectRead | None = None

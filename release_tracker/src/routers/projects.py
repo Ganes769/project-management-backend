@@ -1,8 +1,13 @@
 from fastapi import APIRouter, status
 
 from .. import crud
-from ..dependency import sessionDep
-from ..models import ProjectCreate, ProjectRead, ProjectUpdate
+from ..dependency import projectDep, sessionDep
+from ..models import (
+    ProjectCreate,
+    ProjectRead,
+    ProjectReadWithTasks,
+    ProjectUpdate,
+)
 
 router = APIRouter(prefix="/projects", tags=["projects"])
 
@@ -12,9 +17,9 @@ def list_projects(session: sessionDep):
     return crud.list_projects(session)
 
 
-@router.get("/{id}", response_model=ProjectRead)
-def get_project(id: int, session: sessionDep):
-    return crud.get_project(id, session)
+@router.get("/{project_id}", response_model=ProjectReadWithTasks)
+def get_project(project: projectDep):
+    return project
 
 
 @router.post(
@@ -30,8 +35,8 @@ def create_project(
 
 
 @router.delete("/{project_id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_project(project_id: int, session: sessionDep):
-    return crud.delete_project(project_id, session)
+def delete_project(project_id: int, session: sessionDep) -> None:
+    crud.delete_project(project_id, session)
 
 
 @router.patch("/{project_id}", response_model=ProjectRead)

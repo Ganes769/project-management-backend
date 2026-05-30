@@ -6,7 +6,7 @@ from fastapi import FastAPI, Request, status
 from fastapi.responses import JSONResponse
 from sqlalchemy.exc import IntegrityError
 
-from .routers import projects
+from .routers import projects, task
 
 logging.basicConfig(level=logging.INFO)
 app = FastAPI(title="Release tracker")
@@ -19,6 +19,8 @@ def handle_integrity_error(request: Request, exc: IntegrityError):
     )
 
 app.include_router(router=projects.router)
+app.include_router(router=task.router)
+
 
 @app.get("/")
 def read_root() -> dict[str, str]:
