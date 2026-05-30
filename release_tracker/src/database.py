@@ -4,7 +4,7 @@ from functools import lru_cache
 from sqlalchemy import Engine
 from sqlmodel import Session, create_engine
 
-from config import get_settings
+from .config import get_settings
 
 
 @lru_cache
