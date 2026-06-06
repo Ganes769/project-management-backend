@@ -1,6 +1,7 @@
 from datetime import date
 
 from fastapi import HTTPException, status
+from sqlalchemy.orm import session
 from sqlmodel import Session, select
 
 from .models import (
@@ -9,9 +10,12 @@ from .models import (
     ProjectUpdate,
     Task,
     TaskCreate,
+    TaskDependency,
     TaskPriority,
     TaskStatus,
-    TaskUpdate,
+
+TaskUpdate
+
 )
 
 
@@ -135,3 +139,25 @@ def delete_task(task_id: int, session: Session) -> None:
         )
     session.delete(task)
     session.commit()
+
+def add_dependency(task_id:int,depends_on_id:int,session:Session)->TaskDependency:
+    if task_id==depends_on_id:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,detail="A task cannot depend on itself")
+    task=session.get(Task,task_id)
+    dep=session.get(Task,depends_on_id)
+    if not task or not depends_on_id:
+         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,detail="Task not found")
+    task=session.get(Task,task_id)
+    if task.project_id!= dep.project_id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Dependencies must be in the same project",
+        )
+    existing = session.get(TaskDependency, (task_id, depends_on_id))
+    if existing:
+        return existing
+    edge = TaskDependency(task_id=task_id, depends_on_id=depends_on_id)
+    session.add(edge)
+    session.commit()
+    session.refresh(edge)
+    return edge

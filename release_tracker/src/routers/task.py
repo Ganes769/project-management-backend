@@ -4,6 +4,7 @@ from .. import crud
 from ..dependency import projectDep, sessionDep, taskDep
 from ..models import (
     TaskCreate,
+    TaskDependency,
     TaskPriority,
     TaskRead,
     TaskReadWithProject,
@@ -60,3 +61,12 @@ def update_task(task_id: int, payload: TaskUpdate, session: sessionDep):
 def delete_task(task_id: int, session: sessionDep) -> Response:
     crud.delete_task(task_id, session)
     return Response(status_code=status.HTTP_204_NO_CONTENT)
+@router.post(
+    "/tasks/{task_id}/dependencies/{depends_on_id}",
+    response_model=TaskDependency,
+    status_code=status.HTTP_201_CREATED,
+)
+def add_task_dependency(
+    task_id: int, depends_on_id: int, session: sessionDep
+):
+    return crud.add_dependency(task_id, depends_on_id, session)

@@ -105,3 +105,16 @@ class ProjectReadWithTasks(ProjectRead):
 
 class TaskReadWithProject(TaskRead):
     project: ProjectRead | None = None
+
+class TaskDependency(SQLModel, table=True):
+    __tablename__ = "task_dependencies"
+    task_id: int = Field(
+        foreign_key="tasks.id",
+        primary_key=True,
+        ondelete="CASCADE",
+    )
+    depends_on_id: int = Field(
+        foreign_key="tasks.id",
+        primary_key=True,
+        ondelete="CASCADE",
+    )
