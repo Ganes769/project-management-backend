@@ -5,12 +5,21 @@ import logging
 from fastapi import FastAPI, Request, status
 from fastapi.responses import JSONResponse
 from sqlalchemy.exc import IntegrityError
-
+from fastapi.middleware.cors import CORSMiddleware
 from .routers import projects, task
 
 logging.basicConfig(level=logging.INFO)
+
 app = FastAPI(title="Release tracker")
 
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:5173"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 @app.exception_handler(IntegrityError)
 def handle_integrity_error(request: Request, exc: IntegrityError):
     return JSONResponse(
