@@ -3,6 +3,7 @@ import { Link, useParams } from 'react-router-dom';
 import { ChevronLeft, ListTodo, Pencil, Plus, Trash2 } from 'lucide-react';
 import { Button } from '../components/Button';
 import { ConfirmDialog } from '../components/ConfirmDialog';
+import { DependenciesPanel } from '../components/DependenciesPanel';
 import { EmptyState } from '../components/EmptyState';
 import { ErrorState } from '../components/ErrorState';
 import { KanbanBoard } from '../components/KanbanBoard';
@@ -202,14 +203,20 @@ export function ProjectDetailPage() {
         title="Edit task"
       >
         {editingTask && (
-          <TaskForm
-            initial={editingTask}
-            onSubmit={handleEditTask}
-            onCancel={() => setEditingTask(null)}
-            loading={updateTask.isPending}
-            error={updateTask.error}
-            submitLabel="Save changes"
-          />
+          <div className="space-y-6">
+            <TaskForm
+              initial={editingTask}
+              onSubmit={handleEditTask}
+              onCancel={() => setEditingTask(null)}
+              loading={updateTask.isPending}
+              error={updateTask.error}
+              submitLabel="Save changes"
+            />
+            <DependenciesPanel
+              task={editingTask}
+              candidates={project.tasks}
+            />
+          </div>
         )}
       </Modal>
 

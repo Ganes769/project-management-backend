@@ -1,4 +1,5 @@
-import { QueryClient } from '@tanstack/react-query';
+import { MutationCache, QueryClient } from '@tanstack/react-query';
+import { toast } from 'sonner';
 
 export const queryClient = new QueryClient({
   defaultOptions: {
@@ -16,6 +17,18 @@ export const queryClient = new QueryClient({
       retry: false,
     },
   },
+  mutationCache: new MutationCache({
+    onError: (error) => {
+      const message =
+        error instanceof Error ? error.message : 'Something went wrong';
+      toast.error(message);
+    },
+    onSuccess: (_data, _vars, _ctx, mutation) => {
+      const successMessage = (mutation.meta as { successMessage?: string } | undefined)
+        ?.successMessage;
+      if (successMessage) toast.success(successMessage);
+    },
+  }),
 });
 
 export const queryKeys = {
@@ -29,5 +42,7 @@ export const queryKeys = {
     list: (filters: Record<string, unknown> = {}) =>
       [...queryKeys.tasks.all, 'list', filters] as const,
     detail: (id: number) => [...queryKeys.tasks.all, 'detail', id] as const,
+    dependencies: (id: number) =>
+      [...queryKeys.tasks.all, 'dependencies', id] as const,
   },
 };

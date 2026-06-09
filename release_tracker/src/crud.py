@@ -1,7 +1,6 @@
 from datetime import date
 
 from fastapi import HTTPException, status
-from sqlalchemy.orm import session
 from sqlmodel import Session, select
 
 from .models import (
@@ -13,9 +12,7 @@ from .models import (
     TaskDependency,
     TaskPriority,
     TaskStatus,
-
-TaskUpdate
-
+    TaskUpdate,
 )
 
 
@@ -114,6 +111,16 @@ def create_task(
     return task
 
 
+def count_unmet_dependencies(task_id: int, session: Session) -> int:
+    statement = (
+        select(Task)
+        .join(TaskDependency, TaskDependency.depends_on_id == Task.id)
+        .where(TaskDependency.task_id == task_id)
+        .where(Task.status != TaskStatus.done)
+    )
+    return len(session.exec(statement).all())
+
+
 def update_task(
     task_id: int, payload: TaskUpdate, session: Session
 ) -> Task:
@@ -122,7 +129,22 @@ def update_task(
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="Task not found"
         )
+
     data = payload.model_dump(exclude_unset=True)
+
+    if (
+        data.get("status") == TaskStatus.done
+        and task.status != TaskStatus.done
+        and count_unmet_dependencies(task_id, session) > 0
+    ):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=(
+                "This task cannot be marked done while it still has "
+                "unfinished dependencies."
+            ),
+        )
+
     for key, value in data.items():
         setattr(task, key, value)
     session.add(task)
@@ -140,24 +162,99 @@ def delete_task(task_id: int, session: Session) -> None:
     session.delete(task)
     session.commit()
 
-def add_dependency(task_id:int,depends_on_id:int,session:Session)->TaskDependency:
-    if task_id==depends_on_id:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,detail="A task cannot depend on itself")
-    task=session.get(Task,task_id)
-    dep=session.get(Task,depends_on_id)
-    if not task or not depends_on_id:
-         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,detail="Task not found")
-    task=session.get(Task,task_id)
-    if task.project_id!= dep.project_id:
+def list_dependencies(task_id: int, session: Session) -> list[Task]:
+    statement = (
+        select(Task)
+        .join(TaskDependency, TaskDependency.depends_on_id == Task.id)
+        .where(TaskDependency.task_id == task_id)
+        .order_by(Task.title)
+    )
+    return list(session.exec(statement).all())
+
+
+def list_dependents(task_id: int, session: Session) -> list[Task]:
+    statement = (
+        select(Task)
+        .join(TaskDependency, TaskDependency.task_id == Task.id)
+        .where(TaskDependency.depends_on_id == task_id)
+        .order_by(Task.title)
+    )
+    return list(session.exec(statement).all())
+
+
+def _would_create_cycle(
+    task_id: int, depends_on_id: int, session: Session
+) -> bool:
+    """Return True if adding task_id -> depends_on_id would create a cycle.
+
+    A cycle exists iff task_id is (transitively) reachable from depends_on_id
+    by following depends_on edges.
+    """
+    visited: set[int] = set()
+    stack: list[int] = [depends_on_id]
+    while stack:
+        current = stack.pop()
+        if current == task_id:
+            return True
+        if current in visited:
+            continue
+        visited.add(current)
+        rows = session.exec(
+            select(TaskDependency.depends_on_id).where(
+                TaskDependency.task_id == current
+            )
+        ).all()
+        stack.extend(rows)
+    return False
+
+
+def add_dependency(
+    task_id: int, depends_on_id: int, session: Session
+) -> TaskDependency:
+    if task_id == depends_on_id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="A task cannot depend on itself",
+        )
+
+    task = session.get(Task, task_id)
+    dep = session.get(Task, depends_on_id)
+    if not task or not dep:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Task not found"
+        )
+
+    if task.project_id != dep.project_id:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Dependencies must be in the same project",
         )
+
     existing = session.get(TaskDependency, (task_id, depends_on_id))
     if existing:
         return existing
+
+    if _would_create_cycle(task_id, depends_on_id, session):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Adding this dependency would create a cycle",
+        )
+
     edge = TaskDependency(task_id=task_id, depends_on_id=depends_on_id)
     session.add(edge)
     session.commit()
     session.refresh(edge)
     return edge
+
+
+def remove_dependency(
+    task_id: int, depends_on_id: int, session: Session
+) -> None:
+    edge = session.get(TaskDependency, (task_id, depends_on_id))
+    if not edge:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Dependency not found",
+        )
+    session.delete(edge)
+    session.commit()

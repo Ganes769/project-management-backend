@@ -20,4 +20,11 @@ export const tasksApi = {
     api.patch<TaskRead>(`/tasks/${taskId}`, payload),
   remove: (taskId: number) =>
     api.delete<void>(`/tasks/${taskId}`),
+
+  listDependencies: (taskId: number) =>
+    api.get<TaskRead[]>(`/tasks/${taskId}/dependencies`),
+  addDependency: (taskId: number, dependsOnId: number) =>
+    api.post<TaskRead>(`/tasks/${taskId}/dependencies/${dependsOnId}`),
+  removeDependency: (taskId: number, dependsOnId: number) =>
+    api.delete<void>(`/tasks/${taskId}/dependencies/${dependsOnId}`),
 };

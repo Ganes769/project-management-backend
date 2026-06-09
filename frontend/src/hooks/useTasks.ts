@@ -26,6 +26,7 @@ export function useCreateTask(projectId: number) {
       qc.invalidateQueries({ queryKey: queryKeys.tasks.all });
       qc.invalidateQueries({ queryKey: queryKeys.projects.detail(projectId) });
     },
+    meta: { successMessage: 'Task created' },
   });
 }
 
@@ -38,6 +39,7 @@ export function useUpdateTask() {
       qc.invalidateQueries({ queryKey: queryKeys.tasks.all });
       qc.invalidateQueries({ queryKey: queryKeys.projects.all });
     },
+    meta: { successMessage: 'Task updated' },
   });
 }
 
@@ -48,6 +50,37 @@ export function useDeleteTask() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: queryKeys.tasks.all });
       qc.invalidateQueries({ queryKey: queryKeys.projects.all });
+    },
+    meta: { successMessage: 'Task deleted' },
+  });
+}
+
+export function useTaskDependencies(taskId: number | undefined) {
+  return useQuery({
+    queryKey: queryKeys.tasks.dependencies(taskId ?? -1),
+    queryFn: () => tasksApi.listDependencies(taskId as number),
+    enabled: taskId !== undefined && taskId > 0,
+  });
+}
+
+export function useAddDependency(taskId: number) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (dependsOnId: number) =>
+      tasksApi.addDependency(taskId, dependsOnId),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: queryKeys.tasks.dependencies(taskId) });
+    },
+  });
+}
+
+export function useRemoveDependency(taskId: number) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (dependsOnId: number) =>
+      tasksApi.removeDependency(taskId, dependsOnId),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: queryKeys.tasks.dependencies(taskId) });
     },
   });
 }
