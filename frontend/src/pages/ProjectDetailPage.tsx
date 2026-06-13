@@ -1,6 +1,14 @@
 import { useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import { ChevronLeft, ListTodo, Pencil, Plus, Trash2 } from 'lucide-react';
+import {
+  ChevronLeft,
+  KanbanSquare,
+  ListOrdered,
+  ListTodo,
+  Pencil,
+  Plus,
+  Trash2,
+} from 'lucide-react';
 import { Button } from '../components/Button';
 import { ConfirmDialog } from '../components/ConfirmDialog';
 import { DependenciesPanel } from '../components/DependenciesPanel';
@@ -8,6 +16,7 @@ import { EmptyState } from '../components/EmptyState';
 import { ErrorState } from '../components/ErrorState';
 import { KanbanBoard } from '../components/KanbanBoard';
 import { Modal } from '../components/Modal';
+import { OrderedTaskList } from '../components/OrderedTaskList';
 import { PageHeader } from '../components/PageHeader';
 import { ProjectForm } from '../components/ProjectForm';
 import { Spinner } from '../components/Spinner';
@@ -15,6 +24,7 @@ import { TaskForm } from '../components/TaskForm';
 import {
   useDeleteProject,
   useProject,
+  useProjectTaskOrder,
   useUpdateProject,
 } from '../hooks/useProjects';
 import {
@@ -48,6 +58,12 @@ export function ProjectDetailPage() {
   const [editingTask, setEditingTask] = useState<TaskRead | null>(null);
   const [showEditProject, setShowEditProject] = useState(false);
   const [showDeleteProject, setShowDeleteProject] = useState(false);
+  const [view, setView] = useState<'kanban' | 'order'>('kanban');
+
+  const {
+    data: orderedTasks,
+    isLoading: orderLoading,
+  } = useProjectTaskOrder(view === 'order' ? id : undefined);
 
   if (!id) {
     return (
@@ -126,6 +142,24 @@ export function ProjectDetailPage() {
         description={project.description ?? 'No description'}
         actions={
           <>
+            <div className="mr-2 flex items-center gap-1 rounded-lg bg-slate-100 p-1">
+              <Button
+                size="sm"
+                variant={view === 'kanban' ? 'primary' : 'ghost'}
+                leftIcon={<KanbanSquare className="h-4 w-4" />}
+                onClick={() => setView('kanban')}
+              >
+                Kanban
+              </Button>
+              <Button
+                size="sm"
+                variant={view === 'order' ? 'primary' : 'ghost'}
+                leftIcon={<ListOrdered className="h-4 w-4" />}
+                onClick={() => setView('order')}
+              >
+                Order
+              </Button>
+            </div>
             <Button
               variant="secondary"
               leftIcon={<Pencil className="h-4 w-4" />}
@@ -166,13 +200,23 @@ export function ProjectDetailPage() {
               </Button>
             }
           />
-        ) : (
+        ) : view === 'kanban' ? (
           <KanbanBoard
             tasks={project.tasks}
             onTaskClick={(task) => setEditingTask(task)}
             onStatusChange={handleStatusChange}
             onDelete={(taskId) => deleteTask.mutate(taskId)}
           />
+        ) : orderLoading ? (
+          <Spinner label="Computing execution order…" className="py-16" />
+        ) : (
+          <div className="space-y-3">
+            <p className="text-sm text-slate-500">
+              Tasks listed in dependency order: each task appears after the
+              tasks it depends on.
+            </p>
+            <OrderedTaskList tasks={orderedTasks ?? []} />
+          </div>
         )}
       </div>
 

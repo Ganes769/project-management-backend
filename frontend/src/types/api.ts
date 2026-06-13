@@ -66,6 +66,15 @@ export interface TaskReadWithProject extends TaskRead {
   project: ProjectRead | null;
 }
 
+export interface TaskRef {
+  id: number;
+  title: string;
+}
+
+export interface TaskInOrder extends TaskRead {
+  depends_on: TaskRef[];
+}
+
 export interface TaskCreate {
   title: string;
   detail?: string | null;

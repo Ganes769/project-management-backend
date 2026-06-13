@@ -1,3 +1,4 @@
+from collections import deque
 from datetime import date
 
 from fastapi import HTTPException, status
@@ -258,3 +259,51 @@ def remove_dependency(
         )
     session.delete(edge)
     session.commit()
+
+def topological_order(project_id: int, session: Session) -> list[Task]:
+    """Return a project's tasks in dependency execution order (Kahn's algorithm).
+
+    For every edge X -> Y (X depends on Y), Y appears before X in the result.
+    Complexity: O(V + E) where V = tasks, E = dependency edges.
+    """
+    tasks = list_tasks(session, project_id=project_id)
+    if not tasks:
+        return []
+
+    task_by_id: dict[int, Task] = {t.id: t for t in tasks if t.id is not None}
+    task_ids = list(task_by_id.keys())
+
+    edges = session.exec(
+        select(TaskDependency).where(
+            TaskDependency.task_id.in_(task_ids)  # type: ignore[attr-defined]
+        )
+    ).all()
+
+    in_degree: dict[int, int] = {tid: 0 for tid in task_ids}
+    dependents: dict[int, list[int]] = {tid: [] for tid in task_ids}
+
+    for edge in edges:
+        if edge.depends_on_id in task_by_id:
+            in_degree[edge.task_id] += 1
+            dependents[edge.depends_on_id].append(edge.task_id)
+
+    queue: deque[int] = deque(
+        sorted(tid for tid, deg in in_degree.items() if deg == 0)
+    )
+
+    ordered: list[Task] = []
+    while queue:
+        current = queue.popleft()
+        ordered.append(task_by_id[current])
+        for next_id in sorted(dependents[current]):
+            in_degree[next_id] -= 1
+            if in_degree[next_id] == 0:
+                queue.append(next_id)
+
+    if len(ordered) < len(task_by_id):
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Cycle detected in task dependencies",
+        )
+
+    return ordered

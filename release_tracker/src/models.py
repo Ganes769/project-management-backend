@@ -106,6 +106,16 @@ class ProjectReadWithTasks(ProjectRead):
 class TaskReadWithProject(TaskRead):
     project: ProjectRead | None = None
 
+
+class TaskRef(SQLModel):
+    id: int
+    title: str
+
+
+class TaskInOrder(TaskRead):
+    depends_on: list[TaskRef] = []
+
+
 class TaskDependency(SQLModel, table=True):
     __tablename__ = "task_dependencies"
     task_id: int = Field(

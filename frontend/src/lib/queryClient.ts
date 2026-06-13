@@ -36,6 +36,8 @@ export const queryKeys = {
     all: ['projects'] as const,
     list: () => [...queryKeys.projects.all, 'list'] as const,
     detail: (id: number) => [...queryKeys.projects.all, 'detail', id] as const,
+    taskOrder: (id: number) =>
+      [...queryKeys.projects.all, 'taskOrder', id] as const,
   },
   tasks: {
     all: ['tasks'] as const,

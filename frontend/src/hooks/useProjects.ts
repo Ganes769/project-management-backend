@@ -18,6 +18,14 @@ export function useProject(projectId: number | undefined) {
   });
 }
 
+export function useProjectTaskOrder(projectId: number | undefined) {
+  return useQuery({
+    queryKey: queryKeys.projects.taskOrder(projectId ?? -1),
+    queryFn: () => projectsApi.taskOrder(projectId as number),
+    enabled: projectId !== undefined && projectId > 0,
+  });
+}
+
 export function useCreateProject() {
   const qc = useQueryClient();
   return useMutation({

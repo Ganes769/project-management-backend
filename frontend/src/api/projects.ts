@@ -4,6 +4,7 @@ import type {
   ProjectRead,
   ProjectReadWithTasks,
   ProjectUpdate,
+  TaskInOrder,
 } from '../types/api';
 
 export const projectsApi = {
@@ -16,4 +17,6 @@ export const projectsApi = {
     api.patch<ProjectRead>(`/projects/${projectId}`, payload),
   remove: (projectId: number) =>
     api.delete<void>(`/projects/${projectId}`),
+  taskOrder: (projectId: number) =>
+    api.get<TaskInOrder[]>(`/projects/${projectId}/tasks/order`),
 };
