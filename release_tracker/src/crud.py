@@ -1,5 +1,6 @@
 from collections import deque
 from datetime import date
+from typing import Any
 
 from fastapi import HTTPException, status
 from sqlmodel import Session, select
@@ -154,14 +155,76 @@ def update_task(
     return task
 
 
-def delete_task(task_id: int, session: Session) -> None:
+def delete_task(task_id: int, session: Session) -> dict[str, Any]:
+    """Delete a task and return a snapshot the caller can use to restore it.
+
+    The snapshot includes the task's own fields plus every TaskDependency
+    edge it participates in (on either side), since CASCADE will remove
+    those edges from the DB.
+    """
     task = session.get(Task, task_id)
     if not task:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="Task not found"
         )
+
+    edges = session.exec(
+        select(TaskDependency).where(
+            (TaskDependency.task_id == task_id)
+            | (TaskDependency.depends_on_id == task_id)
+        )
+    ).all()
+
+    snapshot: dict[str, Any] = {
+        "task": task.model_dump(),
+        "dependencies": [
+            {"task_id": e.task_id, "depends_on_id": e.depends_on_id}
+            for e in edges
+        ],
+    }
+
     session.delete(task)
     session.commit()
+    return snapshot
+
+
+def restore_task(snapshot: dict[str, Any], session: Session) -> Task:
+    """Recreate a previously deleted task with the same id, plus its edges.
+
+    Edges whose other endpoint has since been deleted are silently skipped,
+    so undo is best-effort but never crashes.
+    """
+    task_data = dict(snapshot["task"])
+    task_id: int = task_data["id"]
+
+    if session.get(Task, task_id) is not None:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Task already exists; nothing to restore",
+        )
+
+    task = Task(**task_data)
+    session.add(task)
+    session.flush()
+
+    for edge in snapshot.get("dependencies", []):
+        other_id = (
+            edge["depends_on_id"]
+            if edge["task_id"] == task_id
+            else edge["task_id"]
+        )
+        if session.get(Task, other_id) is None:
+            continue
+        session.add(
+            TaskDependency(
+                task_id=edge["task_id"],
+                depends_on_id=edge["depends_on_id"],
+            )
+        )
+
+    session.commit()
+    session.refresh(task)
+    return task
 
 def list_dependencies(task_id: int, session: Session) -> list[Task]:
     statement = (

@@ -98,3 +98,15 @@ export interface TaskListFilters {
   task_priority?: TaskPriority;
   over_due?: boolean;
 }
+
+export interface GeneratedTask {
+  key: string;
+  title: string;
+  detail: string | null;
+  priority: TaskPriority;
+  depends_on: string[];
+}
+
+export interface TaskPlan {
+  tasks: GeneratedTask[];
+}

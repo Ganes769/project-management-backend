@@ -2,6 +2,16 @@ from fastapi import APIRouter, status
 from sqlmodel import select
 
 from .. import crud
+from ..ai import (
+    CreateProjectWithPlanRequest,
+    GeneratePlanRequest,
+    NewProjectPlanRequest,
+    TaskPlan,
+    create_project_with_plan,
+    generate_plan,
+    generate_plan_for_new_project,
+    import_task_plan,
+)
 from ..dependency import projectDep, sessionDep
 from ..models import (
     ProjectCreate,
@@ -37,6 +47,30 @@ def create_project(
     session: sessionDep,
 ):
     return crud.create_project(payload, session)
+
+
+@router.post("/ai/plan", response_model=TaskPlan)
+def ai_new_project_plan(payload: NewProjectPlanRequest):
+    """Generate a task plan for a brand-new project (preview only)."""
+    return generate_plan_for_new_project(payload.name, payload.description)
+
+
+@router.post(
+    "/ai/plan/commit",
+    response_model=ProjectReadWithTasks,
+    status_code=status.HTTP_201_CREATED,
+)
+def ai_new_project_commit(
+    payload: CreateProjectWithPlanRequest,
+    session: sessionDep,
+):
+    """Create a new project and materialise the reviewed task plan."""
+    return create_project_with_plan(
+        payload.name,
+        payload.description,
+        payload.plan,
+        session,
+    )
 
 
 @router.delete("/{project_id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -84,3 +118,28 @@ def get_task_order(project: projectDep, session: sessionDep):
         )
         for task in ordered
     ]
+
+
+@router.post("/{project_id}/ai/plan", response_model=TaskPlan)
+def ai_plan(project: projectDep, payload: GeneratePlanRequest):
+    """Ask the LLM for a task plan grounded in this project + a user brief.
+
+    The plan is validated locally (cycle detection, dangling-ref check)
+    before it's returned, so the frontend can render it as-is for review.
+    Nothing is persisted yet -- call the commit route to materialise it.
+    """
+    return generate_plan(project, payload.description)
+
+
+@router.post(
+    "/{project_id}/ai/plan/commit",
+    response_model=list[TaskRead],
+    status_code=status.HTTP_201_CREATED,
+)
+def ai_plan_commit(
+    project: projectDep,
+    plan: TaskPlan,
+    session: sessionDep,
+):
+    """Materialise a (possibly user-edited) task plan into real tasks + edges."""
+    return import_task_plan(project, plan, session)

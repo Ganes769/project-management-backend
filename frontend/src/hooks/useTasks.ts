@@ -1,4 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { toast } from 'sonner';
 import { tasksApi } from '../api/tasks';
 import { queryKeys } from '../lib/queryClient';
 import type { TaskCreate, TaskListFilters, TaskUpdate } from '../types/api';
@@ -43,15 +44,33 @@ export function useUpdateTask() {
   });
 }
 
+export function useUndo() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: () => tasksApi.undo(),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: queryKeys.tasks.all });
+      qc.invalidateQueries({ queryKey: queryKeys.projects.all });
+      toast.success('Task restored');
+    },
+  });
+}
+
 export function useDeleteTask() {
   const qc = useQueryClient();
+  const undo = useUndo();
   return useMutation({
     mutationFn: (taskId: number) => tasksApi.remove(taskId),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: queryKeys.tasks.all });
       qc.invalidateQueries({ queryKey: queryKeys.projects.all });
+      toast.success('Task deleted', {
+        action: {
+          label: 'Undo',
+          onClick: () => undo.mutate(),
+        },
+      });
     },
-    meta: { successMessage: 'Task deleted' },
   });
 }
 

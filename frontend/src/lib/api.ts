@@ -1,4 +1,19 @@
 const API_BASE = '/api';
+const SESSION_ID_KEY = 'release_tracker_session_id';
+
+/** Stable per-browser identifier used to scope the backend's per-session undo
+ * stack. Generated lazily on first use and persisted to localStorage. */
+function getSessionId(): string {
+  let id = window.localStorage.getItem(SESSION_ID_KEY);
+  if (!id) {
+    id =
+      typeof crypto !== 'undefined' && 'randomUUID' in crypto
+        ? crypto.randomUUID()
+        : `sid-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    window.localStorage.setItem(SESSION_ID_KEY, id);
+  }
+  return id;
+}
 
 export class ApiError extends Error {
   status: number;
@@ -36,7 +51,10 @@ async function request<T>(
   path: string,
   options: RequestOptions = {},
 ): Promise<T> {
-  const headers: Record<string, string> = { Accept: 'application/json' };
+  const headers: Record<string, string> = {
+    Accept: 'application/json',
+    'X-Session-Id': getSessionId(),
+  };
   let body: BodyInit | undefined;
 
   if (options.body !== undefined) {

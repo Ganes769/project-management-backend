@@ -27,4 +27,6 @@ export const tasksApi = {
     api.post<TaskRead>(`/tasks/${taskId}/dependencies/${dependsOnId}`),
   removeDependency: (taskId: number, dependsOnId: number) =>
     api.delete<void>(`/tasks/${taskId}/dependencies/${dependsOnId}`),
+
+  undo: () => api.post<TaskRead>('/undo'),
 };

@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { FolderPlus, Plus } from 'lucide-react';
+import { FolderPlus, Plus, Sparkles } from 'lucide-react';
+import { AiNewProjectModal } from '../components/AiNewProjectModal';
 import { Button } from '../components/Button';
 import { EmptyState } from '../components/EmptyState';
 import { ErrorState } from '../components/ErrorState';
@@ -16,6 +17,7 @@ export function ProjectsPage() {
   const { data, isLoading, error, refetch } = useProjects();
   const create = useCreateProject();
   const [showCreate, setShowCreate] = useState(false);
+  const [showAiCreate, setShowAiCreate] = useState(false);
 
   const handleCreate = (values: ProjectCreate | ProjectUpdate) => {
     create.mutate(values as ProjectCreate, {
@@ -32,9 +34,18 @@ export function ProjectsPage() {
         title="Projects"
         description="Group related tasks into deliverable projects."
         actions={
-          <Button leftIcon={<Plus className="h-4 w-4" />} onClick={() => setShowCreate(true)}>
-            New project
-          </Button>
+          <>
+            <Button
+              variant="secondary"
+              leftIcon={<Sparkles className="h-4 w-4" />}
+              onClick={() => setShowAiCreate(true)}
+            >
+              Create with AI
+            </Button>
+            <Button leftIcon={<Plus className="h-4 w-4" />} onClick={() => setShowCreate(true)}>
+              New project
+            </Button>
+          </>
         }
       />
 
@@ -106,6 +117,11 @@ export function ProjectsPage() {
           submitLabel="Create project"
         />
       </Modal>
+
+      <AiNewProjectModal
+        open={showAiCreate}
+        onClose={() => setShowAiCreate(false)}
+      />
     </>
   );
 }
