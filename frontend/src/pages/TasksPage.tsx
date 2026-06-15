@@ -47,16 +47,16 @@ export function TasksPage() {
     <>
       <PageHeader
         title="All Tasks"
-        description="Cross-project view of every task."
+        description="Cross-project overview with quick status updates."
       />
 
-      <div className="mx-auto max-w-7xl space-y-6 px-6 py-8">
-        <div className="rounded-2xl border border-slate-200 bg-white p-4">
-          <div className="mb-3 flex items-center gap-2 text-sm font-medium text-slate-700">
-            <Filter className="h-4 w-4" />
+      <div className="page-body">
+        <div className="surface-panel p-5">
+          <div className="mb-4 flex items-center gap-2 text-sm font-semibold text-slate-800">
+            <Filter className="h-4 w-4 text-slate-500" />
             Filters
           </div>
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
             <Field label="Project">
               <Select
                 value={filters.project_id ?? ''}
@@ -118,10 +118,10 @@ export function TasksPage() {
             </Field>
 
             <Field label="Overdue only">
-              <label className="flex h-10 items-center gap-2 rounded-lg border border-slate-300 px-3 text-sm text-slate-700">
+              <label className="flex h-9 cursor-pointer items-center gap-2.5 rounded-lg border border-slate-200 bg-white px-3 text-sm text-slate-700 shadow-sm">
                 <input
                   type="checkbox"
-                  className="h-4 w-4 rounded border-slate-300 text-brand-600 focus:ring-brand-500"
+                  className="h-4 w-4 rounded border-slate-300 text-brand-600 focus:ring-brand-500/30"
                   checked={filters.over_due === true}
                   onChange={(e) =>
                     setFilters((f) => ({
@@ -135,19 +135,15 @@ export function TasksPage() {
             </Field>
           </div>
           {hasFilters && (
-            <div className="mt-3 flex justify-end">
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setFilters({})}
-              >
+            <div className="mt-4 flex justify-end border-t border-slate-100 pt-4">
+              <Button variant="ghost" size="sm" onClick={() => setFilters({})}>
                 Reset filters
               </Button>
             </div>
           )}
         </div>
 
-        {isLoading && <Spinner label="Loading tasks…" className="py-16" />}
+        {isLoading && <Spinner label="Loading tasks…" className="py-20" />}
 
         {error && <ErrorState error={error} onRetry={() => void refetch()} />}
 
@@ -164,94 +160,96 @@ export function TasksPage() {
         )}
 
         {tasks && tasks.length > 0 && (
-          <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
-            <table className="w-full text-left text-sm">
-              <thead className="border-b border-slate-200 bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
-                <tr>
-                  <th className="px-4 py-3">Task</th>
-                  <th className="px-4 py-3">Project</th>
-                  <th className="px-4 py-3">Status</th>
-                  <th className="px-4 py-3">Priority</th>
-                  <th className="px-4 py-3">Due</th>
-                  <th className="px-4 py-3 text-right">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100">
-                {tasks.map((task) => {
-                  const overdue = isOverdue(task.due_date, task.status);
-                  return (
-                    <tr
-                      key={task.id}
-                      className="transition hover:bg-slate-50"
-                    >
-                      <td className="px-4 py-3">
-                        <div className="font-medium text-slate-900">
-                          {task.title}
-                        </div>
-                        {task.detail && (
-                          <div className="line-clamp-1 text-xs text-slate-500">
-                            {task.detail}
+          <div className="surface-panel overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="w-full min-w-[720px] text-left text-sm">
+                <thead>
+                  <tr className="border-b border-slate-200 bg-slate-50/80 text-xs font-semibold uppercase tracking-wide text-slate-500">
+                    <th className="px-5 py-3.5">Task</th>
+                    <th className="px-5 py-3.5">Project</th>
+                    <th className="px-5 py-3.5">Status</th>
+                    <th className="px-5 py-3.5">Priority</th>
+                    <th className="px-5 py-3.5">Due</th>
+                    <th className="px-5 py-3.5 text-right">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {tasks.map((task) => {
+                    const overdue = isOverdue(task.due_date, task.status);
+                    return (
+                      <tr
+                        key={task.id}
+                        className="transition-colors hover:bg-slate-50/80"
+                      >
+                        <td className="px-5 py-4">
+                          <div className="font-medium text-slate-900">
+                            {task.title}
                           </div>
-                        )}
-                      </td>
-                      <td className="px-4 py-3">
-                        <Link
-                          to={`/projects/${task.project_id}`}
-                          className="text-brand-700 hover:underline"
-                        >
-                          {projectsById.get(task.project_id) ??
-                            `#${task.project_id}`}
-                        </Link>
-                      </td>
-                      <td className="px-4 py-3">
-                        <Select
-                          className="!h-8 !py-1 text-xs"
-                          value={task.status}
-                          onChange={(e) =>
-                            updateTask.mutate({
-                              taskId: task.id,
-                              payload: {
-                                status: e.target.value as TaskStatus,
-                              },
-                            })
-                          }
-                        >
-                          {TASK_STATUSES.map((s) => (
-                            <option key={s} value={s}>
-                              {statusLabel[s]}
-                            </option>
-                          ))}
-                        </Select>
-                      </td>
-                      <td className="px-4 py-3">
-                        <PriorityBadge priority={task.priority} />
-                      </td>
-                      <td className="px-4 py-3">
-                        <span
-                          className={
-                            overdue
-                              ? 'font-medium text-rose-600'
-                              : 'text-slate-600'
-                          }
-                        >
-                          {formatDate(task.due_date)}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3 text-right">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => deleteTask.mutate(task.id)}
-                          className="text-rose-600 hover:bg-rose-50"
-                        >
-                          Delete
-                        </Button>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+                          {task.detail && (
+                            <div className="mt-0.5 line-clamp-1 text-xs text-slate-500">
+                              {task.detail}
+                            </div>
+                          )}
+                        </td>
+                        <td className="px-5 py-4">
+                          <Link
+                            to={`/projects/${task.project_id}`}
+                            className="font-medium text-brand-700 hover:text-brand-800 hover:underline"
+                          >
+                            {projectsById.get(task.project_id) ??
+                              `#${task.project_id}`}
+                          </Link>
+                        </td>
+                        <td className="px-5 py-4">
+                          <Select
+                            className="!h-8 !py-1 text-xs"
+                            value={task.status}
+                            onChange={(e) =>
+                              updateTask.mutate({
+                                taskId: task.id,
+                                payload: {
+                                  status: e.target.value as TaskStatus,
+                                },
+                              })
+                            }
+                          >
+                            {TASK_STATUSES.map((s) => (
+                              <option key={s} value={s}>
+                                {statusLabel[s]}
+                              </option>
+                            ))}
+                          </Select>
+                        </td>
+                        <td className="px-5 py-4">
+                          <PriorityBadge priority={task.priority} />
+                        </td>
+                        <td className="px-5 py-4">
+                          <span
+                            className={
+                              overdue
+                                ? 'font-medium text-rose-600'
+                                : 'text-slate-600'
+                            }
+                          >
+                            {formatDate(task.due_date)}
+                          </span>
+                        </td>
+                        <td className="px-5 py-4 text-right">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => deleteTask.mutate(task.id)}
+                            className="text-rose-600 hover:bg-rose-50"
+                          >
+                            Delete
+                          </Button>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
           </div>
         )}
       </div>

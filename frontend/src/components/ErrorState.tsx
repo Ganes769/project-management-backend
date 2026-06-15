@@ -1,4 +1,5 @@
 import { AlertCircle } from 'lucide-react';
+import { Button } from './Button';
 
 interface ErrorStateProps {
   title?: string;
@@ -14,20 +15,26 @@ function getMessage(error: unknown): string {
 
 export function ErrorState({ title, error, onRetry }: ErrorStateProps) {
   return (
-    <div className="flex flex-col items-center justify-center rounded-2xl border border-rose-200 bg-rose-50 px-6 py-12 text-center">
-      <AlertCircle className="mb-3 h-8 w-8 text-rose-500" />
-      <h3 className="text-base font-semibold text-rose-900">
+    <div className="flex flex-col items-center justify-center rounded-xl border border-rose-200/80 bg-rose-50/80 px-6 py-14 text-center">
+      <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-rose-100 text-rose-600">
+        <AlertCircle className="h-6 w-6" />
+      </div>
+      <h3 className="text-base font-semibold text-rose-950">
         {title ?? 'Failed to load'}
       </h3>
-      <p className="mt-1 max-w-sm text-sm text-rose-700">{getMessage(error)}</p>
+      <p className="mt-2 max-w-md text-sm leading-relaxed text-rose-700/90">
+        {getMessage(error)}
+      </p>
       {onRetry && (
-        <button
+        <Button
           type="button"
+          variant="danger"
+          size="sm"
+          className="mt-5"
           onClick={onRetry}
-          className="mt-4 rounded-lg bg-rose-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-rose-700"
         >
           Try again
-        </button>
+        </Button>
       )}
     </div>
   );

@@ -13,18 +13,18 @@ interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
 
 const variantStyles: Record<Variant, string> = {
   primary:
-    'bg-brand-600 text-white hover:bg-brand-700 focus-visible:ring-brand-500 shadow-sm',
+    'bg-brand-600 text-white shadow-sm shadow-brand-600/20 hover:bg-brand-700 focus-visible:ring-brand-500 active:bg-brand-800',
   secondary:
-    'bg-white text-slate-700 ring-1 ring-inset ring-slate-300 hover:bg-slate-50 focus-visible:ring-slate-400',
+    'border border-slate-200 bg-white text-slate-700 shadow-sm hover:border-slate-300 hover:bg-slate-50 focus-visible:ring-slate-400 active:bg-slate-100',
   ghost:
-    'bg-transparent text-slate-600 hover:bg-slate-100 hover:text-slate-900',
+    'text-slate-600 hover:bg-slate-100 hover:text-slate-900 focus-visible:ring-slate-400',
   danger:
-    'bg-rose-600 text-white hover:bg-rose-700 focus-visible:ring-rose-500 shadow-sm',
+    'bg-rose-600 text-white shadow-sm shadow-rose-600/20 hover:bg-rose-700 focus-visible:ring-rose-500 active:bg-rose-800',
 };
 
 const sizeStyles: Record<Size, string> = {
-  sm: 'h-8 px-3 text-sm',
-  md: 'h-10 px-4 text-sm',
+  sm: 'h-8 gap-1.5 px-3 text-xs font-medium',
+  md: 'h-9 gap-2 px-4 text-sm font-medium',
 };
 
 export function Button({
@@ -42,9 +42,9 @@ export function Button({
       {...rest}
       disabled={disabled || loading}
       className={[
-        'inline-flex items-center justify-center gap-2 rounded-lg font-medium transition',
+        'inline-flex items-center justify-center rounded-lg transition-colors duration-150',
         'focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2',
-        'disabled:cursor-not-allowed disabled:opacity-60',
+        'disabled:cursor-not-allowed disabled:opacity-50',
         variantStyles[variant],
         sizeStyles[size],
         className ?? '',

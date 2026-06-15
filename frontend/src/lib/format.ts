@@ -23,9 +23,42 @@ export const statusStyles: Record<TaskStatus, string> = {
 
 export const priorityStyles: Record<TaskPriority, string> = {
   low: 'bg-slate-100 text-slate-700 ring-slate-200',
-  medium: 'bg-amber-100 text-amber-700 ring-amber-200',
-  high: 'bg-orange-100 text-orange-700 ring-orange-200',
-  urgent: 'bg-rose-100 text-rose-700 ring-rose-200',
+  medium: 'bg-amber-100 text-amber-800 ring-amber-200',
+  high: 'bg-orange-100 text-orange-800 ring-orange-200',
+  urgent: 'bg-rose-100 text-rose-800 ring-rose-200',
+};
+
+export const statusBorderStyles: Record<TaskStatus, string> = {
+  planned: 'border-l-slate-400',
+  in_progress: 'border-l-blue-500',
+  blocked: 'border-l-rose-500',
+  done: 'border-l-emerald-500',
+};
+
+export const statusColumnStyles: Record<
+  TaskStatus,
+  { accent: string; bg: string; dot: string }
+> = {
+  planned: {
+    accent: 'border-t-slate-400',
+    bg: 'bg-slate-50/90',
+    dot: 'bg-slate-400',
+  },
+  in_progress: {
+    accent: 'border-t-blue-500',
+    bg: 'bg-blue-50/40',
+    dot: 'bg-blue-500',
+  },
+  blocked: {
+    accent: 'border-t-rose-500',
+    bg: 'bg-rose-50/40',
+    dot: 'bg-rose-500',
+  },
+  done: {
+    accent: 'border-t-emerald-500',
+    bg: 'bg-emerald-50/40',
+    dot: 'bg-emerald-500',
+  },
 };
 
 export function formatDate(value: string | null | undefined): string {

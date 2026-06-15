@@ -120,6 +120,7 @@ export function AiNewProjectModal({ open, onClose }: AiNewProjectModalProps) {
       onClose={handleClose}
       title="Create project with AI"
       description="Describe your project and AI will draft tasks with dependencies."
+      size="lg"
     >
       {!plan ? (
         <div className="space-y-4">

@@ -14,7 +14,7 @@ createRoot(document.getElementById("root")!).render(
       <BrowserRouter>
         <App />
       </BrowserRouter>
-      <Toaster richColors position="top-right" closeButton />
+      <Toaster richColors position="bottom-right" closeButton toastOptions={{ className: 'font-sans' }} />
       <ReactQueryDevtools initialIsOpen={false} buttonPosition="bottom-right" />
     </QueryClientProvider>
   </StrictMode>,
