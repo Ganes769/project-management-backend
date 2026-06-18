@@ -39,7 +39,7 @@ export interface ProjectRead {
 }
 
 export interface ProjectReadWithTasks extends ProjectRead {
-  tasks: TaskRead[];
+  tasks: TaskReadWithProgress[];
 }
 
 export interface ProjectCreate {
@@ -55,11 +55,22 @@ export interface ProjectUpdate {
 export interface TaskRead {
   id: number;
   project_id: number;
+  parent_task_id: number | null;
   title: string;
   detail: string | null;
   status: TaskStatus;
   priority: TaskPriority;
   due_date: string | null;
+}
+
+export interface SubtaskProgress {
+  total: number;
+  done: number;
+  percent: number;
+}
+
+export interface TaskReadWithProgress extends TaskRead {
+  subtask_progress?: SubtaskProgress | null;
 }
 
 export interface TaskReadWithProject extends TaskRead {
@@ -81,6 +92,7 @@ export interface TaskCreate {
   status?: TaskStatus;
   priority?: TaskPriority;
   due_date?: string | null;
+  parent_task_id?: number | null;
 }
 
 export interface TaskUpdate {

@@ -1,5 +1,6 @@
 import { api } from '../lib/api';
 import type {
+  SubtaskProgress,
   TaskCreate,
   TaskListFilters,
   TaskRead,
@@ -27,6 +28,13 @@ export const tasksApi = {
     api.post<TaskRead>(`/tasks/${taskId}/dependencies/${dependsOnId}`),
   removeDependency: (taskId: number, dependsOnId: number) =>
     api.delete<void>(`/tasks/${taskId}/dependencies/${dependsOnId}`),
+
+  listSubtasks: (taskId: number) =>
+    api.get<TaskRead[]>(`/tasks/${taskId}/subtasks`),
+  createSubtask: (taskId: number, payload: TaskCreate) =>
+    api.post<TaskRead>(`/tasks/${taskId}/subtasks`, payload),
+  getSubtaskProgress: (taskId: number) =>
+    api.get<SubtaskProgress>(`/tasks/${taskId}/subtasks/progress`),
 
   undo: () => api.post<TaskRead>('/undo'),
 };

@@ -33,8 +33,8 @@ def list_projects(session: sessionDep):
 
 
 @router.get("/{project_id}", response_model=ProjectReadWithTasks)
-def get_project(project: projectDep):
-    return project
+def get_project(project: projectDep, session: sessionDep):
+    return crud.build_project_read_with_tasks(project, session)
 
 
 @router.post(
@@ -65,12 +65,13 @@ def ai_new_project_commit(
     session: sessionDep,
 ):
     """Create a new project and materialise the reviewed task plan."""
-    return create_project_with_plan(
+    project = create_project_with_plan(
         payload.name,
         payload.description,
         payload.plan,
         session,
     )
+    return crud.build_project_read_with_tasks(project, session)
 
 
 @router.delete("/{project_id}", status_code=status.HTTP_204_NO_CONTENT)

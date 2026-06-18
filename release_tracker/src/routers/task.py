@@ -3,6 +3,7 @@ from fastapi import APIRouter, Depends, Header, HTTPException, Response, status
 from .. import crud
 from ..dependency import projectDep, sessionDep, taskDep
 from ..models import (
+    SubtaskProgress,
     TaskCreate,
     TaskPriority,
     TaskRead,
@@ -79,6 +80,51 @@ def delete_task(
         UndoEntry(kind="task_delete", payload=snapshot)
     )
     return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+@router.get(
+    "/tasks/{task_id}/subtasks/progress",
+    response_model=SubtaskProgress,
+)
+def get_subtask_progress(task_id: int, session: sessionDep):
+    progress = crud.compute_subtask_progress(task_id, session)
+    if progress is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="This task has no subtasks",
+        )
+    return progress
+
+
+@router.get(
+    "/tasks/{task_id}/subtasks",
+    response_model=list[TaskRead],
+)
+def list_subtasks(task_id: int, session: sessionDep):
+    task = crud.get_task(task_id, session)
+    if not task:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Task not found"
+        )
+    return crud.list_subtasks(task_id, session)
+
+
+@router.post(
+    "/tasks/{task_id}/subtasks",
+    response_model=TaskRead,
+    status_code=status.HTTP_201_CREATED,
+)
+def create_subtask(
+    task_id: int,
+    payload: TaskCreate,
+    session: sessionDep,
+):
+    parent = crud.get_task(task_id, session)
+    if not parent:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Task not found"
+        )
+    return crud.create_subtask(parent, payload, session)
 
 
 @router.get(

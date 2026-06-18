@@ -79,11 +79,16 @@ class Task(TaskBase, table=True):
         foreign_key="projects.project_id",
         index=True,
     )
+    parent_task_id: int | None = Field(
+        default=None,
+        foreign_key="tasks.id",
+        index=True,
+    )
     project: Project | None = Relationship(back_populates="tasks")
 
 
 class TaskCreate(TaskBase):
-    pass
+    parent_task_id: int | None = None
 
 
 class TaskUpdate(SQLModel):
@@ -92,15 +97,27 @@ class TaskUpdate(SQLModel):
     status: TaskStatus | None = None
     priority: TaskPriority | None = None
     due_date: date | None = None
+    parent_task_id: int | None = None
 
 
 class TaskRead(TaskBase):
     id: int
     project_id: int
+    parent_task_id: int | None = None
+
+
+class SubtaskProgress(SQLModel):
+    total: int
+    done: int
+    percent: int
+
+
+class TaskReadWithProgress(TaskRead):
+    subtask_progress: SubtaskProgress | None = None
 
 
 class ProjectReadWithTasks(ProjectRead):
-    tasks: list[TaskRead] = []
+    tasks: list[TaskReadWithProgress] = []
 
 
 class TaskReadWithProject(TaskRead):

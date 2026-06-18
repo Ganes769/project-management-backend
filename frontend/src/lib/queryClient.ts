@@ -46,5 +46,9 @@ export const queryKeys = {
     detail: (id: number) => [...queryKeys.tasks.all, 'detail', id] as const,
     dependencies: (id: number) =>
       [...queryKeys.tasks.all, 'dependencies', id] as const,
+    subtasks: (id: number) =>
+      [...queryKeys.tasks.all, 'subtasks', id] as const,
+    subtaskProgress: (id: number) =>
+      [...queryKeys.tasks.all, 'subtaskProgress', id] as const,
   },
 };

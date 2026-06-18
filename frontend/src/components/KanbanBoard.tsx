@@ -12,13 +12,13 @@ import {
 } from '@dnd-kit/core';
 import { CSS } from '@dnd-kit/utilities';
 import { GripVertical } from 'lucide-react';
-import type { TaskRead, TaskStatus } from '../types/api';
+import type { TaskRead, TaskReadWithProgress, TaskStatus } from '../types/api';
 import { TASK_STATUSES } from '../types/api';
 import { statusColumnStyles, statusLabel } from '../lib/format';
 import { TaskCard } from './TaskCard';
 
 interface KanbanBoardProps {
-  tasks: TaskRead[];
+  tasks: TaskReadWithProgress[];
   onTaskClick?: (task: TaskRead) => void;
   onStatusChange?: (
     taskId: number,
@@ -30,7 +30,7 @@ interface KanbanBoardProps {
 
 interface KanbanColumnProps {
   status: TaskStatus;
-  tasks: TaskRead[];
+  tasks: TaskReadWithProgress[];
   onTaskClick?: (task: TaskRead) => void;
   onStatusChange?: (
     taskId: number,
@@ -41,7 +41,7 @@ interface KanbanColumnProps {
 }
 
 interface DraggableTaskCardProps {
-  task: TaskRead;
+  task: TaskReadWithProgress;
   onTaskClick?: (task: TaskRead) => void;
   onStatusChange?: (
     taskId: number,
@@ -79,6 +79,7 @@ function DraggableTaskCard({
       <TaskCard
         task={task}
         compact
+        subtaskProgress={task.subtask_progress}
         dragHandle={
           <button
             type="button"
@@ -169,7 +170,7 @@ export function KanbanBoard({
   onStatusChange,
   onDelete,
 }: KanbanBoardProps) {
-  const [activeTask, setActiveTask] = useState<TaskRead | null>(null);
+  const [activeTask, setActiveTask] = useState<TaskReadWithProgress | null>(null);
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -178,7 +179,7 @@ export function KanbanBoard({
   );
 
   const grouped = useMemo(() => {
-    const map: Record<TaskStatus, TaskRead[]> = {
+    const map: Record<TaskStatus, TaskReadWithProgress[]> = {
       planned: [],
       in_progress: [],
       blocked: [],
@@ -189,7 +190,7 @@ export function KanbanBoard({
   }, [tasks]);
 
   const taskById = useMemo(() => {
-    const map = new Map<number, TaskRead>();
+    const map = new Map<number, TaskReadWithProgress>();
     for (const task of tasks) map.set(task.id, task);
     return map;
   }, [tasks]);
@@ -241,7 +242,7 @@ export function KanbanBoard({
       <DragOverlay dropAnimation={{ duration: 200, easing: 'ease' }}>
         {activeTask ? (
           <div className="w-[280px] rotate-1 cursor-grabbing opacity-95 shadow-xl">
-            <TaskCard task={activeTask} compact />
+            <TaskCard task={activeTask} compact subtaskProgress={activeTask.subtask_progress} />
           </div>
         ) : null}
       </DragOverlay>

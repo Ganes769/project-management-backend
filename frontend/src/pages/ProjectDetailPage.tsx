@@ -24,6 +24,7 @@ import { ProjectForm } from '../components/ProjectForm';
 import { ProjectOverview } from '../components/ProjectOverview';
 import { SegmentedControl } from '../components/SegmentedControl';
 import { Spinner } from '../components/Spinner';
+import { SubtasksPanel } from '../components/SubtasksPanel';
 import { TaskForm } from '../components/TaskForm';
 import {
   useDeleteProject,
@@ -42,6 +43,7 @@ import type {
   ProjectUpdate,
   TaskCreate,
   TaskRead,
+  TaskReadWithProgress,
   TaskStatus,
   TaskUpdate,
 } from '../types/api';
@@ -59,7 +61,7 @@ export function ProjectDetailPage() {
   const deleteTask = useDeleteTask();
 
   const [showCreateTask, setShowCreateTask] = useState(false);
-  const [editingTask, setEditingTask] = useState<TaskRead | null>(null);
+  const [editingTask, setEditingTask] = useState<TaskReadWithProgress | null>(null);
   const [showEditProject, setShowEditProject] = useState(false);
   const [showDeleteProject, setShowDeleteProject] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
@@ -144,6 +146,8 @@ export function ProjectDetailPage() {
     });
   };
 
+  const rootTasks = project.tasks.filter((t) => !t.parent_task_id);
+
   return (
     <>
       <PageHeader
@@ -169,8 +173,8 @@ export function ProjectDetailPage() {
             </span>
             <span className="hidden text-slate-300 sm:inline">·</span>
             <span>
-              {project.tasks.length}{' '}
-              {project.tasks.length === 1 ? 'task' : 'tasks'}
+              {rootTasks.length}{' '}
+              {rootTasks.length === 1 ? 'task' : 'tasks'}
             </span>
           </div>
         }
@@ -231,9 +235,9 @@ export function ProjectDetailPage() {
       />
 
       <div className="page-body">
-        {project.tasks.length > 0 && (
+        {rootTasks.length > 0 && (
           <>
-            <ProjectOverview tasks={project.tasks} />
+            <ProjectOverview tasks={rootTasks} />
 
             <div className="flex flex-col gap-3 border-b border-slate-200/80 pb-5 sm:flex-row sm:items-center sm:justify-between">
               <SegmentedControl
@@ -282,7 +286,7 @@ export function ProjectDetailPage() {
           />
         ) : view === 'kanban' ? (
           <KanbanBoard
-            tasks={project.tasks}
+            tasks={rootTasks}
             onTaskClick={(task) => setEditingTask(task)}
             onStatusChange={handleStatusChange}
             onDelete={(taskId) => deleteTask.mutate(taskId)}
@@ -332,8 +336,11 @@ export function ProjectDetailPage() {
             />
             <DependenciesPanel
               task={editingTask}
-              candidates={project.tasks}
+              candidates={rootTasks}
             />
+            {!editingTask.parent_task_id && (
+              <SubtasksPanel task={editingTask} />
+            )}
           </div>
         )}
       </Modal>

@@ -8,11 +8,15 @@ from sqlmodel import Session, select
 from .models import (
     Project,
     ProjectCreate,
+    ProjectReadWithTasks,
     ProjectUpdate,
+    SubtaskProgress,
     Task,
     TaskCreate,
     TaskDependency,
     TaskPriority,
+    TaskRead,
+    TaskReadWithProgress,
     TaskStatus,
     TaskUpdate,
 )
@@ -82,6 +86,7 @@ def list_tasks(
     task_status: TaskStatus | None = None,
     over_due: bool = False,
     task_priority: TaskPriority | None = None,
+    root_only: bool = False,
 ) -> list[Task]:
     statement = select(Task)
     if project_id is not None:
@@ -92,6 +97,8 @@ def list_tasks(
         statement = statement.where(Task.status == task_status)
     if task_priority is not None:
         statement = statement.where(Task.priority == task_priority)
+    if root_only:
+        statement = statement.where(Task.parent_task_id.is_(None))  # type: ignore[union-attr]
     if over_due:
         statement = (
             statement.where(Task.due_date.is_not(None))  # type: ignore[union-attr]
@@ -104,13 +111,133 @@ def list_tasks(
 def create_task(
     project: Project, payload: TaskCreate, session: Session
 ) -> Task:
+    if payload.parent_task_id is not None:
+        parent = session.get(Task, payload.parent_task_id)
+        if not parent:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND, detail="Parent task not found"
+            )
+        if parent.project_id != project.project_id:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Subtasks must belong to the same project",
+            )
+        return create_subtask(parent, payload, session)
+
     task = Task.model_validate(
-        payload, update={"project_id": project.project_id}
+        payload, update={"project_id": project.project_id, "parent_task_id": None}
     )
     session.add(task)
     session.commit()
     session.refresh(task)
     return task
+
+
+def list_subtasks(parent_id: int, session: Session) -> list[Task]:
+    statement = (
+        select(Task)
+        .where(Task.parent_task_id == parent_id)
+        .order_by(Task.title)
+    )
+    return list(session.exec(statement).all())
+
+
+def count_incomplete_subtasks(parent_id: int, session: Session) -> int:
+    statement = (
+        select(Task)
+        .where(Task.parent_task_id == parent_id)
+        .where(Task.status != TaskStatus.done)
+    )
+    return len(session.exec(statement).all())
+
+
+def compute_subtask_progress(
+    parent_id: int, session: Session
+) -> SubtaskProgress | None:
+    children = list_subtasks(parent_id, session)
+    if not children:
+        return None
+    total = len(children)
+    done = sum(1 for child in children if child.status == TaskStatus.done)
+    percent = round((done / total) * 100) if total else 0
+    return SubtaskProgress(total=total, done=done, percent=percent)
+
+
+def subtask_progress_map(
+    project_id: int, session: Session
+) -> dict[int, SubtaskProgress]:
+    statement = select(Task).where(
+        Task.project_id == project_id,
+        Task.parent_task_id.is_not(None),  # type: ignore[union-attr]
+    )
+    subtasks = list(session.exec(statement).all())
+    grouped: dict[int, list[Task]] = {}
+    for task in subtasks:
+        if task.parent_task_id is None:
+            continue
+        grouped.setdefault(task.parent_task_id, []).append(task)
+
+    progress: dict[int, SubtaskProgress] = {}
+    for parent_id, children in grouped.items():
+        total = len(children)
+        done = sum(1 for child in children if child.status == TaskStatus.done)
+        progress[parent_id] = SubtaskProgress(
+            total=total,
+            done=done,
+            percent=round((done / total) * 100) if total else 0,
+        )
+    return progress
+
+
+def _has_subtasks(task_id: int, session: Session) -> bool:
+    statement = select(Task.id).where(Task.parent_task_id == task_id).limit(1)
+    return session.exec(statement).first() is not None
+
+
+def create_subtask(
+    parent: Task, payload: TaskCreate, session: Session
+) -> Task:
+    if parent.id is None:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Parent task is invalid",
+        )
+    if parent.parent_task_id is not None:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Subtasks cannot be nested; parent must be a top-level task",
+        )
+
+    data = payload.model_dump(exclude={"parent_task_id"})
+    task = Task.model_validate(
+        data,
+        update={"project_id": parent.project_id, "parent_task_id": parent.id},
+    )
+    session.add(task)
+    session.commit()
+    session.refresh(task)
+    return task
+
+
+def build_project_read_with_tasks(
+    project: Project, session: Session
+) -> ProjectReadWithTasks:
+    progress = subtask_progress_map(project.project_id, session)
+    tasks: list[TaskReadWithProgress] = []
+    for task in project.tasks:
+        task_read = TaskReadWithProgress.model_validate(task)
+        if task.id is not None and task.parent_task_id is None:
+            task_read.subtask_progress = progress.get(task.id)
+        tasks.append(task_read)
+
+    return ProjectReadWithTasks(
+        project_id=project.project_id,
+        name=project.name,
+        slug=project.slug,
+        description=project.description,
+        created_at=project.created_at,
+        tasks=tasks,
+    )
 
 
 def count_unmet_dependencies(task_id: int, session: Session) -> int:
@@ -146,6 +273,44 @@ def update_task(
                 "unfinished dependencies."
             ),
         )
+
+    if (
+        data.get("status") == TaskStatus.done
+        and task.status != TaskStatus.done
+        and count_incomplete_subtasks(task_id, session) > 0
+    ):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=(
+                "This task cannot be marked done while it still has "
+                "incomplete subtasks."
+            ),
+        )
+
+    if "parent_task_id" in data:
+        new_parent_id = data["parent_task_id"]
+        if new_parent_id is not None:
+            if _has_subtasks(task_id, session):
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="A task with subtasks cannot become a subtask",
+                )
+            parent = session.get(Task, new_parent_id)
+            if not parent:
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail="Parent task not found",
+                )
+            if parent.parent_task_id is not None:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="Subtasks cannot be nested",
+                )
+            if parent.project_id != task.project_id:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="Subtasks must belong to the same project",
+                )
 
     for key, value in data.items():
         setattr(task, key, value)
@@ -324,12 +489,16 @@ def remove_dependency(
     session.commit()
 
 def topological_order(project_id: int, session: Session) -> list[Task]:
-    """Return a project's tasks in dependency execution order (Kahn's algorithm).
+    """Return a project's root tasks in dependency execution order (Kahn's).
 
     For every edge X -> Y (X depends on Y), Y appears before X in the result.
-    Complexity: O(V + E) where V = tasks, E = dependency edges.
+    Subtasks are excluded from the ordering graph.
     """
-    tasks = list_tasks(session, project_id=project_id)
+    tasks = [
+        task
+        for task in list_tasks(session, project_id=project_id)
+        if task.parent_task_id is None
+    ]
     if not tasks:
         return []
 

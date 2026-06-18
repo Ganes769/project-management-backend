@@ -103,3 +103,27 @@ export function useRemoveDependency(taskId: number) {
     },
   });
 }
+
+export function useTaskSubtasks(taskId: number | undefined) {
+  return useQuery({
+    queryKey: queryKeys.tasks.subtasks(taskId ?? -1),
+    queryFn: () => tasksApi.listSubtasks(taskId as number),
+    enabled: taskId !== undefined && taskId > 0,
+  });
+}
+
+export function useCreateSubtask(parentTaskId: number) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (payload: TaskCreate) =>
+      tasksApi.createSubtask(parentTaskId, payload),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: queryKeys.tasks.subtasks(parentTaskId) });
+      qc.invalidateQueries({
+        queryKey: queryKeys.tasks.subtaskProgress(parentTaskId),
+      });
+      qc.invalidateQueries({ queryKey: queryKeys.projects.all });
+    },
+    meta: { successMessage: 'Subtask added' },
+  });
+}

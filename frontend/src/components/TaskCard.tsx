@@ -1,6 +1,6 @@
 import { Calendar, MoreVertical, Trash2 } from 'lucide-react';
 import { useRef, useState, useEffect, type ReactNode } from 'react';
-import type { TaskRead } from '../types/api';
+import type { SubtaskProgress, TaskRead } from '../types/api';
 import { TASK_STATUSES } from '../types/api';
 import {
   formatDate,
@@ -14,6 +14,7 @@ interface TaskCardProps {
   task: TaskRead;
   compact?: boolean;
   dragHandle?: ReactNode;
+  subtaskProgress?: SubtaskProgress | null;
   onClick?: (task: TaskRead) => void;
   onStatusChange?: (taskId: number, status: TaskRead['status']) => void;
   onDelete?: (taskId: number) => void;
@@ -23,6 +24,7 @@ export function TaskCard({
   task,
   compact = false,
   dragHandle,
+  subtaskProgress,
   onClick,
   onStatusChange,
   onDelete,
@@ -106,6 +108,12 @@ export function TaskCard({
       {task.detail && (
         <p className="mt-1.5 line-clamp-2 text-xs leading-relaxed text-slate-500">
           {task.detail}
+        </p>
+      )}
+
+      {subtaskProgress && subtaskProgress.total > 0 && (
+        <p className="mt-2 text-xs font-medium text-slate-500">
+          {subtaskProgress.done}/{subtaskProgress.total} subtasks done
         </p>
       )}
 
